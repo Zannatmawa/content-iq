@@ -204,21 +204,5 @@ model CreditLedger {
   createdAt DateTime @default(now())
 }
 
-3. Create the local PostgreSQL database:
-createdb contentiq
 
-4. Run the migration:
-npx prisma migrate dev --name init
 
-5. Create src/lib/prisma/index.ts with this content:
-import { PrismaClient } from "@prisma/client";
-
-const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined;
-};
-
-export const prisma =
-  globalForPrisma.prisma ??
-  new PrismaClient({
-    log: ["query"],
-  });

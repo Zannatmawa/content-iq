@@ -69,7 +69,7 @@ export async function createProject(
 
         const parsed = createProjectSchema.safeParse({ workspaceId, title, description });
         if (!parsed.success)
-            return { success: false, error: parsed.error.errors[0].message };
+            return { success: false, error: parsed.error.issues[0].message };
 
         const membership = await prisma.workspaceMember.findUnique({
             where: { workspaceId_userId: { workspaceId, userId } },
@@ -260,7 +260,7 @@ export async function updateProject(
 
         const parsed = updateProjectSchema.safeParse(data);
         if (!parsed.success)
-            return { success: false, error: parsed.error.errors[0].message };
+            return { success: false, error: parsed.error.issues[0].message };
 
         await prisma.project.update({
             where: { id },

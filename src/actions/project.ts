@@ -1,136 +1,346 @@
-// "use server";
+"use server";
 
-// import { db } from "@/lib/db"; // Adjust this import based on your setup
-// import { auth } from "@clerk/nextjs/server"; // Switch to next-auth if using it
-// import { revalidatePath } from "next/cache";
+import { prisma } from "@/lib/prisma";
+import { auth } from "@/lib/auth";
+import { ProjectStatus, TaskStatus, ContentType } from "@prisma/client";
+import { revalidatePath } from "next/cache";
+import { z } from "zod";
 
-// // Helper to verify user membership in a workspace
-// async function verifyWorkspaceAccess(workspaceId: string) {
-//     const { userId } = await auth();
-//     if (!userId) throw new Error("Unauthorized");
+// ── Validation schemas ────────────────────────────────────────────────────────
 
-//     const membership = await db.workspaceMember.findFirst({
-//         where: {
-//             workspaceId,
-//             userId, // Assumes your schema tracks userId in workspace members
-//         },
-//     });
+const createProjectSchema = z.object({
+    workspaceId: z.string().min(1, "Workspace is required"),
+    title: z.string().min(1, "Title is required").max(100),
+    description: z.string().max(500).optional(),
+});
 
-//     if (!membership) throw new Error("Forbidden: You do not belong to this workspace");
-//     return userId;
-// }
+const updateProjectSchema = z.object({
+    title: z.string().min(1).max(100).optional(),
+    description: z.string().max(500).optional(),
+    status: z.nativeEnum(ProjectStatus).optional(),
+});
 
-// export async function createProject(workspaceId: string, title: string, description?: string) {
-//     await verifyWorkspaceAccess(workspaceId);
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
-//     const project = await db.project.create({
-//         data: {
-//             workspaceId,
-//             title,
-//             description,
-//             status: "ACTIVE",
-//         },
-//     });
+async function requireUserId(): Promise<string> {
+    const session = await auth();
+    if (!session?.user?.id) throw new Error("Unauthorized");
+    return session.user.id;
+}
 
-//     revalidatePath("/projects");
-//     return project;
-// }
+async function requireProjectAccess(
+    projectId: string,
+    userId: string
+): Promise<{ workspaceId: string }> {
+    const project = await prisma.project.findUnique({
+        where: { id: projectId },
+        select: {
+            workspaceId: true,
+            workspace: {
+                select: {
+                    members: { where: { userId }, select: { id: true } },
+                },
+            },
+        },
+    });
 
-// export async function getProjects(workspaceId?: string) {
-//     const { userId } = await auth();
-//     if (!userId) throw new Error("Unauthorized");
+    if (!project) throw new Error("Project not found");
+    if (project.workspace.members.length === 0)
+        throw new Error("You do not have access to this project");
 
-//     // Fetch projects belonging to workspaces where the user is a member
-//     return await db.project.findMany({
-//         where: {
-//             ...(workspaceId ? { workspaceId } : {
-//                 workspace: {
-//                     members: {
-//                         some: { userId }
-//                     }
-//                 }
-//             })
-//         },
-//         include: {
-//             workspace: true,
-//             _count: {
-//                 select: { contents: true, tasks: true }
-//             }
-//         },
-//         orderBy: { createdAt: "desc" },
-//     });
-// }
+    return { workspaceId: project.workspaceId };
+}
 
-// export async function getProjectById(id: string) {
-//     const { userId } = await auth();
-//     if (!userId) throw new Error("Unauthorized");
+// ── Action result type ────────────────────────────────────────────────────────
 
-//     const project = await db.project.findUnique({
-//         where: { id },
-//         include: {
-//             workspace: {
-//                 include: { members: true }
-//             },
-//             contents: true,
-//             tasks: true,
-//         },
-//     });
+type ActionResult<T = undefined> =
+    | { success: true; data?: T }
+    | { success: false; error: string };
 
-//     if (!project) throw new Error("Project not found");
+// ── createProject ─────────────────────────────────────────────────────────────
 
-//     // Verify user is in the parent workspace
-//     const isMember = project.workspace.members.some(m => m.userId === userId);
-//     if (!isMember) throw new Error("Forbidden");
+export async function createProject(
+    workspaceId: string,
+    title: string,
+    description: string = ""
+): Promise<ActionResult<{ id: string }>> {
+    try {
+        const userId = await requireUserId();
 
-//     return project;
-// }
+        const parsed = createProjectSchema.safeParse({ workspaceId, title, description });
+        if (!parsed.success)
+            return { success: false, error: parsed.error.errors[0].message };
 
-// export async function updateProject(id: string, data: { title?: string; description?: string; status?: "ACTIVE" | "PAUSED" | "COMPLETED" }) {
-//     const project = await getProjectById(id); // handles verification internally
+        const membership = await prisma.workspaceMember.findUnique({
+            where: { workspaceId_userId: { workspaceId, userId } },
+        });
+        if (!membership)
+            return { success: false, error: "You are not a member of this workspace" };
 
-//     const updated = await db.project.update({
-//         where: { id },
-//         data,
-//     });
+        const project = await prisma.project.create({
+            data: {
+                workspaceId: parsed.data.workspaceId,
+                userId,
+                title: parsed.data.title,
+                description: parsed.data.description ?? "",
+                status: ProjectStatus.ACTIVE,
+            },
+            select: { id: true },
+        });
 
-//     revalidatePath(`/projects/${id}`);
-//     revalidatePath("/projects");
-//     return updated;
-// }
+        revalidatePath("/projects");
+        revalidatePath(`/workspace/${workspaceId}`);
+        return { success: true, data: { id: project.id } };
+    } catch (err) {
+        const message = err instanceof Error ? err.message : "Failed to create project";
+        return { success: false, error: message };
+    }
+}
 
-// export async function deleteProject(id: string) {
-//     await getProjectById(id); // handles verification internally
+// ── getProjects ───────────────────────────────────────────────────────────────
 
-//     await db.project.delete({
-//         where: { id },
-//     });
+type ProjectSummary = {
+    id: string;
+    title: string;
+    description: string | null;
+    status: ProjectStatus;
+    createdAt: Date;
+    workspaceId: string;
+    workspaceName: string;
+    contentCount: number;
+    taskCount: number;
+};
 
-//     revalidatePath("/projects");
-// }
+export async function getProjects(
+    workspaceId?: string
+): Promise<ActionResult<ProjectSummary[]>> {
+    try {
+        const userId = await requireUserId();
 
-// export async function getProjectStats(id: string) {
-//     const project = await getProjectById(id);
+        const projects = await prisma.project.findMany({
+            where: {
+                workspace: {
+                    members: { some: { userId } },
+                    ...(workspaceId ? { id: workspaceId } : {}),
+                },
+            },
+            orderBy: { createdAt: "desc" },
+            include: {
+                workspace: { select: { name: true } },
+                _count: { select: { contents: true, tasks: true } },
+            },
+        });
 
-//     const totalContent = project.contents.length;
-//     const pendingTasks = project.tasks.filter(t => t.status === "PENDING" || t.status === "RUNNING").length;
-//     const completedTasks = project.tasks.filter(t => t.status === "COMPLETED").length;
+        const data: ProjectSummary[] = projects.map((p) => ({
+            id: p.id,
+            title: p.title,
+            description: p.description ?? null,
+            status: p.status,
+            createdAt: p.createdAt,
+            workspaceId: p.workspaceId,
+            workspaceName: p.workspace.name,
+            contentCount: p._count.contents,
+            taskCount: p._count.tasks,
+        }));
 
-//     // Breakdown mapping by content type
-//     const typeBreakdown: Record<string, number> = {};
-//     project.contents.forEach(c => {
-//         typeBreakdown[c.type] = (typeBreakdown[c.type] || 0) + 1;
-//     });
+        return { success: true, data };
+    } catch (err) {
+        const message = err instanceof Error ? err.message : "Failed to fetch projects";
+        return { success: false, error: message };
+    }
+}
 
-//     const contentByType = Object.entries(typeBreakdown).map(([name, value]) => ({
-//         name,
-//         value,
-//     }));
+// ── getProjectById ────────────────────────────────────────────────────────────
 
-//     return {
-//         totalContent,
-//         pendingTasks,
-//         completedTasks,
-//         totalMembers: project.workspace.members.length,
-//         contentByType,
-//     };
-// }
+type ContentItem = {
+    id: string;
+    title: string;
+    type: string;
+    status: string;
+    createdAt: Date;
+    prompt: string;
+};
+
+type TaskItem = {
+    id: string;
+    type: string;
+    status: string;
+    agentType: string | null;
+    orderIndex: number;
+    createdAt: Date;
+    error: string | null;
+};
+
+type ProjectDetail = {
+    id: string;
+    title: string;
+    description: string | null;
+    status: ProjectStatus;
+    createdAt: Date;
+    updatedAt: Date;
+    workspaceId: string;
+    workspaceName: string;
+    memberCount: number;
+    contents: ContentItem[];
+    tasks: TaskItem[];
+};
+
+export async function getProjectById(
+    id: string
+): Promise<ActionResult<ProjectDetail>> {
+    try {
+        const userId = await requireUserId();
+        await requireProjectAccess(id, userId);
+
+        const project = await prisma.project.findUnique({
+            where: { id },
+            include: {
+                workspace: {
+                    select: { name: true, _count: { select: { members: true } } },
+                },
+                contents: {
+                    orderBy: { createdAt: "desc" },
+                    select: {
+                        id: true,
+                        title: true,
+                        type: true,
+                        status: true,
+                        createdAt: true,
+                        prompt: true,
+                    },
+                },
+                tasks: {
+                    orderBy: [{ orderIndex: "asc" }, { createdAt: "desc" }],
+                    select: {
+                        id: true,
+                        type: true,
+                        status: true,
+                        agentType: true,
+                        orderIndex: true,
+                        createdAt: true,
+                        error: true,
+                    },
+                },
+            },
+        });
+
+        if (!project) return { success: false, error: "Project not found" };
+
+        return {
+            success: true,
+            data: {
+                id: project.id,
+                title: project.title,
+                description: project.description ?? null,
+                status: project.status,
+                createdAt: project.createdAt,
+                updatedAt: project.updatedAt,
+                workspaceId: project.workspaceId,
+                workspaceName: project.workspace.name,
+                memberCount: project.workspace._count.members,
+                contents: project.contents,
+                tasks: project.tasks,
+            },
+        };
+    } catch (err) {
+        const message = err instanceof Error ? err.message : "Failed to fetch project";
+        return { success: false, error: message };
+    }
+}
+
+// ── updateProject ─────────────────────────────────────────────────────────────
+
+export async function updateProject(
+    id: string,
+    data: { title?: string; description?: string; status?: ProjectStatus }
+): Promise<ActionResult> {
+    try {
+        const userId = await requireUserId();
+        const { workspaceId } = await requireProjectAccess(id, userId);
+
+        const parsed = updateProjectSchema.safeParse(data);
+        if (!parsed.success)
+            return { success: false, error: parsed.error.errors[0].message };
+
+        await prisma.project.update({
+            where: { id },
+            data: {
+                ...(parsed.data.title !== undefined && { title: parsed.data.title }),
+                ...(parsed.data.description !== undefined && { description: parsed.data.description }),
+                ...(parsed.data.status !== undefined && { status: parsed.data.status }),
+            },
+        });
+
+        revalidatePath(`/projects/${id}`);
+        revalidatePath("/projects");
+        revalidatePath(`/workspace/${workspaceId}`);
+        return { success: true };
+    } catch (err) {
+        const message = err instanceof Error ? err.message : "Failed to update project";
+        return { success: false, error: message };
+    }
+}
+
+// ── deleteProject ─────────────────────────────────────────────────────────────
+
+export async function deleteProject(id: string): Promise<ActionResult> {
+    try {
+        const userId = await requireUserId();
+        const { workspaceId } = await requireProjectAccess(id, userId);
+
+        await prisma.project.delete({ where: { id } });
+
+        revalidatePath("/projects");
+        revalidatePath(`/workspace/${workspaceId}`);
+        return { success: true };
+    } catch (err) {
+        const message = err instanceof Error ? err.message : "Failed to delete project";
+        return { success: false, error: message };
+    }
+}
+
+// ── getProjectStats ───────────────────────────────────────────────────────────
+
+type ProjectStats = {
+    totalContent: number;
+    pendingTasks: number;
+    completedTasks: number;
+    contentByType: { type: ContentType; count: number }[];
+};
+
+export async function getProjectStats(
+    id: string
+): Promise<ActionResult<ProjectStats>> {
+    try {
+        const userId = await requireUserId();
+        await requireProjectAccess(id, userId);
+
+        const [totalContent, pendingTasks, completedTasks, contentByTypeRaw] =
+            await Promise.all([
+                prisma.content.count({ where: { projectId: id } }),
+                prisma.task.count({ where: { projectId: id, status: TaskStatus.PENDING } }),
+                prisma.task.count({ where: { projectId: id, status: TaskStatus.COMPLETED } }),
+                prisma.content.groupBy({
+                    by: ["type"],
+                    where: { projectId: id },
+                    _count: { type: true },
+                }),
+            ]);
+
+        return {
+            success: true,
+            data: {
+                totalContent,
+                pendingTasks,
+                completedTasks,
+                contentByType: contentByTypeRaw.map((r) => ({
+                    type: r.type,
+                    count: r._count.type,
+                })),
+            },
+        };
+    } catch (err) {
+        const message = err instanceof Error ? err.message : "Failed to fetch project stats";
+        return { success: false, error: message };
+    }
+}

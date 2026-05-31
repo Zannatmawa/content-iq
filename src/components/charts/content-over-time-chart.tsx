@@ -14,9 +14,11 @@ import {
 type ChartDay = { date: string; count: number };
 
 // ── Custom tooltip ────────────────────────────────────────────────────────────
-function CustomTooltip({ active, payload, label }: TooltipProps<number, string>) {
+function CustomTooltip({ active, payload, label }: any) {
     if (!active || !payload?.length) return null;
+
     const value = payload[0]?.value ?? 0;
+
     return (
         <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-md dark:border-slate-700 dark:bg-slate-900">
             <p className="text-xs font-medium text-slate-500 dark:text-slate-400">

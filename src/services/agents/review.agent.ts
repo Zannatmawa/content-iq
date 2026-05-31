@@ -1,26 +1,47 @@
-import { BaseAgent } from "./base.agent";
+import { openai } from "@/lib/ai/openai";
+import { prisma } from "@/lib/prisma";
+import { TaskStatus, Prisma } from "@prisma/client";
 
-export class ReviewAgent extends BaseAgent {
-    name = "ReviewAgent";
+export abstract class BaseAgent<TPayload = unknown, TResult = unknown> {
+    abstract name: string;
 
-    async run(payload: Record<string, unknown>) {
-        const { draft } = payload as { draft: string };
-        const prompt = `Review this blog post draft and provide improvements:
+    abstract run(payload: TPayload): Promise<TResult>;
 
-${draft}
+    async markTaskInProgress(taskId: string) {
+        return prisma.task.update({
+            where: { id: taskId },
+            data: { status: TaskStatus.IN_PROGRESS },
+        });
+    }
 
-Return JSON:
-{
-  "improvedDraft": "the improved version of the full article in Markdown",
-  "changes": ["change1", "change2", "change3"],
-  "qualityScore": 85,
-  "readabilityScore": 90
-}
+    async markTaskCompleted(taskId: string, result: TResult) {
+        return prisma.task.update({
+            where: { id: taskId },
+            data: {
+                status: TaskStatus.COMPLETED,
+                result: result as Prisma.InputJsonValue,
+            },
+        });
+    }
 
-Return ONLY valid JSON.`;
+    async markTaskFailed(taskId: string, error: string) {
+        return prisma.task.update({
+            where: { id: taskId },
+            data: {
+                status: TaskStatus.FAILED,
+                error,
+            },
+        });
+    }
 
-        const raw = await this.callAI(prompt, 2500);
-        const review = JSON.parse(raw.replace(/```json|```/g, "").trim());
-        return { reviewedDraft: review.improvedDraft, review };
+    protected async callAI(prompt: string, maxTokens = 1500): Promise<string> {
+        const response = await openai.chat.completions.create({
+            model: "gpt-4.1",
+            messages: [{ role: "user", content: prompt }],
+            temperature: 0.7,
+            max_tokens: maxTokens,
+        });
+
+        return response.choices[0].message.content ?? "";
     }
 }

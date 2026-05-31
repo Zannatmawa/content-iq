@@ -71,7 +71,7 @@ export async function createWorkspace(
 
         const parsed = createWorkspaceSchema.safeParse({ name, description });
         if (!parsed.success)
-            return { success: false, error: parsed.error.errors[0].message };
+            return { success: false, error: parsed.error.issues[0].message };
 
         const slug = await generateSlug(name);
 
@@ -252,7 +252,7 @@ export async function updateWorkspace(
 
         const parsed = updateWorkspaceSchema.safeParse(data);
         if (!parsed.success)
-            return { success: false, error: parsed.error.errors[0].message };
+            return { success: false, error: parsed.error.issues[0].message };
 
         await prisma.workspace.update({
             where: { id },

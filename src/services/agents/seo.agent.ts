@@ -1,15 +1,31 @@
 import { BaseAgent } from "./base.agent";
 
-export class SEOAgent extends BaseAgent {
+type SEOPayload = {
+    reviewedDraft: string;
+    research: {
+        keywords?: string[];
+    };
+};
+
+type SEOResult = {
+    optimizedContent: string;
+    metaTitle: string;
+    metaDescription: string;
+    primaryKeyword: string;
+    secondaryKeywords: string[];
+};
+
+export class SEOAgent extends BaseAgent<SEOPayload, SEOResult> {
     name = "SEOAgent";
 
-    async run(payload: Record<string, unknown>) {
-        const { reviewedDraft, research } = payload as { reviewedDraft: string; research: Record<string, unknown> };
+    async run(payload: SEOPayload): Promise<SEOResult> {
+        const { reviewedDraft, research } = payload;
+
         const prompt = `Optimize this article for SEO:
 
 ${reviewedDraft}
 
-Keywords to target: ${JSON.stringify((research as { keywords?: string[] }).keywords || [])}
+Keywords to target: ${JSON.stringify(research.keywords || [])}
 
 Return JSON:
 {
@@ -23,7 +39,9 @@ Return JSON:
 Return ONLY valid JSON.`;
 
         const raw = await this.callAI(prompt, 2500);
-        const seo = JSON.parse(raw.replace(/```json|```/g, "").trim());
-        return { finalContent: seo.optimizedContent, seoMetadata: seo };
+
+        const cleaned = raw.replace(/```json|```/g, "").trim();
+
+        return JSON.parse(cleaned);
     }
 }

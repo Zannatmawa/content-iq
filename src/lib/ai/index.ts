@@ -1,5 +1,11 @@
 import { openai } from "./openai";
-import { buildBlogPrompt, buildEmailPrompt, buildSocialPostPrompt, buildResearchPrompt, buildSEOPrompt } from "./prompts";
+import {
+    buildBlogPrompt,
+    buildEmailPrompt,
+    buildSocialPostPrompt,
+    buildResearchPrompt,
+    buildSEOPrompt,
+} from "./prompts";
 
 export type GenerateParams =
     | { type: "blog"; topic: string; audience: string; tone: string; keywords?: string; wordCount?: number }
@@ -9,13 +15,17 @@ export type GenerateParams =
     | { type: "seo"; content: string };
 
 export async function generateContent(params: GenerateParams): Promise<string> {
-    let prompt = "";
+    let prompt: string = "";
 
-    if (params.type === "blog") prompt = buildBlogPrompt(params);
-    else if (params.type === "email") prompt = buildEmailPrompt({ type: params.emailType, ...params });
-    else if (params.type === "social_post") prompt = buildSocialPostPrompt(params);
-    else if (params.type === "research") prompt = buildResearchPrompt(params.topic);
-    else if (params.type === "seo") prompt = buildSEOPrompt(params.content);
+    if (params.type === "blog") {
+        prompt = buildBlogPrompt(params);
+    } else if (params.type === "social_post") {
+        prompt = buildSocialPostPrompt(params);
+    } else if (params.type === "research") {
+        prompt = buildResearchPrompt(params.topic);
+    } else if (params.type === "seo") {
+        prompt = buildSEOPrompt(params.content);
+    }
 
     const response = await openai.chat.completions.create({
         model: "gpt-4.1",
@@ -24,7 +34,20 @@ export async function generateContent(params: GenerateParams): Promise<string> {
         max_tokens: 2000,
     });
 
-    return response.choices[0].message.content ?? "";
+    const content = response?.choices?.[0]?.message?.content;
+
+    if (!content) {
+        throw new Error("OpenAI returned empty response");
+    }
+
+    return content;
 }
 
-export { buildBlogPrompt, buildEmailPrompt, buildSocialPostPrompt, buildResearchPrompt, buildSEOPrompt };
+// re-export prompt builders
+export {
+    buildBlogPrompt,
+    buildEmailPrompt,
+    buildSocialPostPrompt,
+    buildResearchPrompt,
+    buildSEOPrompt,
+};

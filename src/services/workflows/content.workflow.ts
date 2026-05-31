@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { TaskType, TaskStatus, ContentStatus } from "@prisma/client";
 import { ResearchAgent } from "../agents/research.agent";
-import { } from "../agents/outline.agent";
+import { OutlineAgent } from "../agents/outline.agent";
 import { WriterAgent } from "../agents/writer.agent";
 import { ReviewAgent } from "../agents/review.agent";
 import { SEOAgent } from "../agents/seo.agent";

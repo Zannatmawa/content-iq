@@ -1,47 +1,36 @@
-import { openai } from "@/lib/ai/openai";
-import { prisma } from "@/lib/prisma";
-import { TaskStatus, Prisma } from "@prisma/client";
+import { BaseAgent } from "./base.agent";
 
-export abstract class BaseAgent<TPayload = unknown, TResult = unknown> {
-    abstract name: string;
+export type ReviewPayload = {
+    draft: string;
+};
 
-    abstract run(payload: TPayload): Promise<TResult>;
+export type ReviewResult = {
+    improvedDraft: string;
+    changes: string[];
+    qualityScore: number;
+    readabilityScore: number;
+};
 
-    async markTaskInProgress(taskId: string) {
-        return prisma.task.update({
-            where: { id: taskId },
-            data: { status: TaskStatus.IN_PROGRESS },
-        });
-    }
+export class ReviewAgent extends BaseAgent<ReviewPayload, ReviewResult> {
+    name = "ReviewAgent";
 
-    async markTaskCompleted(taskId: string, result: TResult) {
-        return prisma.task.update({
-            where: { id: taskId },
-            data: {
-                status: TaskStatus.COMPLETED,
-                result: result as Prisma.InputJsonValue,
-            },
-        });
-    }
+    async run(payload: ReviewPayload): Promise<ReviewResult> {
+        const { draft } = payload;
 
-    async markTaskFailed(taskId: string, error: string) {
-        return prisma.task.update({
-            where: { id: taskId },
-            data: {
-                status: TaskStatus.FAILED,
-                error,
-            },
-        });
-    }
+        const prompt = `Review this blog post draft:
 
-    protected async callAI(prompt: string, maxTokens = 1500): Promise<string> {
-        const response = await openai.chat.completions.create({
-            model: "gpt-4.1",
-            messages: [{ role: "user", content: prompt }],
-            temperature: 0.7,
-            max_tokens: maxTokens,
-        });
+${draft}
 
-        return response.choices[0].message.content ?? "";
+Return JSON:
+{
+  "improvedDraft": "...",
+  "changes": [],
+  "qualityScore": 85,
+  "readabilityScore": 90
+}`;
+
+        const raw = await this.callAI(prompt, 2500);
+
+        return JSON.parse(raw.replace(/```json|```/g, "").trim());
     }
 }

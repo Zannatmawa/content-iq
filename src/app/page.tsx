@@ -3,7 +3,7 @@ import Footer from "@/components/shared/Footer";
 import HeroSection from "@/components/shared/HeroSection";
 import HowItWorks from "@/components/shared/HowItWorks";
 import Navbar from "@/components/shared/Navbar";
-import NewsletterSignup from "@/components/shared/Newsletter";
+// import NewsletterSignup from "@/components/shared/Newsletter";
 import PopularTemplates from "@/components/shared/PopularTemplates";
 import Pricing from "@/components/shared/Pricing";
 import Statistics from "@/components/shared/Statistics";
@@ -20,7 +20,7 @@ export default function Home() {
         <PopularTemplates />
         <Pricing />
         <Statistics />
-        <NewsletterSignup />
+        {/* <NewsletterSignup /> */}
         <Footer />
       </main>
     </div>

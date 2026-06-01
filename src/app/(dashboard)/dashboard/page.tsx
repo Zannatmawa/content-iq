@@ -1,4 +1,4 @@
-import { auth } from "@/lib/auth";
+import { auth } from "@/lib/auth/auth-index";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { ContentStatus, TaskStatus } from "@prisma/client";

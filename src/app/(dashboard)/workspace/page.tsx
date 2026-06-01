@@ -1,6 +1,6 @@
 import { getWorkspaces } from "@/actions/workspace";
 import { NewWorkspaceDialog } from "@/components/forms/new-workspace-dialog";
-import { auth } from "@/lib/auth";
+import { auth } from "@/lib/auth/auth-index";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import {

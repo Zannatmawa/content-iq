@@ -1,7 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { auth } from "@/lib/auth";
+import { auth } from "@/lib/auth/auth-index";
 import { ProjectStatus, TaskStatus, ContentType } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";

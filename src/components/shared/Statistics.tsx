@@ -4,21 +4,33 @@ import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
 import { Users, FileText, CheckCircle, Zap } from 'lucide-react';
 
 // Reusable Animated Counter Engine Component
-function AnimatedCounter({ from = 0, to, duration = 2, suffix = "" }) {
+type AnimatedCounterProps = {
+    from?: number;
+    to: number;
+    duration?: number;
+    suffix?: string;
+};
+
+function AnimatedCounter({
+    from = 0,
+    to,
+    duration = 2,
+    suffix = ""
+}: AnimatedCounterProps) {
     const count = useMotionValue(from);
-    const rounded = useTransform(count, (latest) => {
-        return Math.floor(latest).toLocaleString() + suffix;
-    });
-    const [displayValue, setDisplayValue] = useState(from.toLocaleString() + suffix);
+    const [displayValue, setDisplayValue] = useState(
+        from.toLocaleString() + suffix
+    );
 
     useEffect(() => {
         const controls = animate(count, to, {
-            duration: duration,
+            duration,
             ease: "easeOut",
             onUpdate: (latest) => {
                 setDisplayValue(Math.floor(latest).toLocaleString() + suffix);
             }
         });
+
         return () => controls.stop();
     }, [count, to, duration, suffix]);
 

@@ -76,12 +76,12 @@ export default function ExplorePage() {
     }, [filteredAndSortedTemplates, sanitizedCurrentPage]);
 
     // Handle resetting active state page cleanly during filter clicks
-    const handleCategoryChange = (cat) => {
+    const handleCategoryChange = (cat: string) => {
         setSelectedCategory(cat);
         setCurrentPage(1);
     };
 
-    const handleRatingChange = (rate) => {
+    const handleRatingChange = (rate: string) => {
         setSelectedRating(rate);
         setCurrentPage(1);
     };

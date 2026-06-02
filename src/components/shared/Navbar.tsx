@@ -8,6 +8,7 @@ import {
     LayoutDashboard, LogOut, Settings,
     Sparkles, Loader2, type LucideIcon,
 } from "lucide-react";
+import Link from "next/link";
 
 type NavLink = {
     name: string;
@@ -18,6 +19,8 @@ type NavLink = {
 export default function Navbar() {
     const { data: session, status } = useSession();
     const router = useRouter();
+    const user = session?.user?.email
+    console.log(user)
 
     const isLoading = status === "loading";
     const isLoggedIn = status === "authenticated";
@@ -66,14 +69,15 @@ export default function Navbar() {
     const loggedOutLinks: NavLink[] = [
         { name: "Home", href: "/" },
         { name: "Explore", href: "/explore" },
-        { name: "Templates", href: "/templates" },
+        // { name: "Templates", href: "/explore" },
         { name: "Blog", href: "/blog" },
         { name: "About", href: "/about" },
     ];
 
     const loggedInLinks: NavLink[] = [
         { name: "Home", href: "/" },
-        { name: "Templates", href: "/templates" },
+        // { name: "Templates", href: "/templates" },
+        { name: "Explore", href: "/explore" },
         { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
         { name: "My Content", href: "/content", icon: FileText },
     ];
@@ -86,14 +90,14 @@ export default function Navbar() {
                 <div className="flex h-16 items-center justify-between">
 
                     {/* ── Logo ───────────────────────────────────────────────────── */}
-                    <a href="/" className="flex items-center gap-2">
+                    <Link href="/" className="flex items-center gap-2">
                         <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#0B1220] text-white">
                             <Sparkles className="h-5 w-5 text-indigo-400" />
                         </div>
                         <span className="text-xl font-bold text-[#0B1220]">
                             Content<span className="text-indigo-600">.IQ</span>
                         </span>
-                    </a>
+                    </Link>
 
                     {/* ── Desktop nav links ───────────────────────────────────────── */}
                     <div className="hidden space-x-8 md:flex">

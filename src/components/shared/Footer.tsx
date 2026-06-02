@@ -105,17 +105,17 @@ export default function Footer() {
                         </h4>
                         <ul className="space-y-3 text-xs text-gray-500">
                             <li className="flex items-start gap-2.5">
-                                <Mail className="h-4 w-4 text-gray-400 flex-shrink-0 mt-0.5" />
+                                <Mail className="h-4 w-4 text-gray-400 shrink-0 mt-0.5" />
                                 <a href="mailto:ops@writeflow.ai" className="hover:text-indigo-600 transition-colors">
                                     ops@writeflow.ai
                                 </a>
                             </li>
                             <li className="flex items-start gap-2.5">
-                                <Phone className="h-4 w-4 text-gray-400 flex-shrink-0 mt-0.5" />
+                                <Phone className="h-4 w-4 text-gray-400 shrink-0 mt-0.5" />
                                 <span className="text-gray-400">+1 (555) 234-5678</span>
                             </li>
                             <li className="flex items-start gap-2.5">
-                                <MapPin className="h-4 w-4 text-gray-400 flex-shrink-0 mt-0.5" />
+                                <MapPin className="h-4 w-4 text-gray-400 shrink-0 mt-0.5" />
                                 <span className="text-gray-400 leading-relaxed">
                                     100 Pine Street, Suite 1200<br />San Francisco, CA 94111
                                 </span>

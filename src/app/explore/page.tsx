@@ -1,3 +1,4 @@
+"use client";
 import React, { useState, useMemo } from 'react';
 import { Search, SlidersHorizontal, Star, ChevronLeft, ChevronRight, FileText, Mail, Share2, Megaphone, Activity, Sparkles } from 'lucide-react';
 

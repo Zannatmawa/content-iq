@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+
 import {
+    ArrowLeft,
     LayoutDashboard,
     Building2,
     FolderOpen,
@@ -64,14 +66,20 @@ function NavLink({
 // ── Logo mark ────────────────────────────────────────────────────────────────
 function Logo() {
     return (
-        <Link href="/dashboard" className="flex items-center gap-2.5 px-3 py-1">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-900 dark:bg-white">
-                <Sparkles className="h-4 w-4 text-white dark:text-slate-900" />
-            </div>
-            <span className="text-[15px] font-semibold tracking-tight text-slate-900 dark:text-white">
-                ContentIQ
-            </span>
-        </Link>
+        <>
+            <Link href="/" className="flex items-center justify-center gap-2">
+                <ArrowLeft className="w-5 h-5" />
+                <span>Go Back</span>
+            </Link>
+            <Link href="/dashboard" className="flex items-center gap-2.5 px-3 py-1">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-900 dark:bg-white">
+                    <Sparkles className="h-4 w-4 text-white dark:text-slate-900" />
+                </div>
+                <span className="text-[15px] font-semibold tracking-tight text-slate-900 dark:text-white">
+                    ContentIQ
+                </span>
+            </Link>
+        </>
     );
 }
 

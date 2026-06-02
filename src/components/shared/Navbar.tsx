@@ -49,7 +49,7 @@ export default function Navbar() {
 
     const loggedOutLinks: NavLink[] = [
         { name: "Home", href: "#" },
-        { name: "Explore", href: "#" },
+        { name: "Explore", href: "/explore" },
         { name: "Blog", href: "#" },
         { name: "About", href: "#" },
         { name: "Contact", href: "#" },

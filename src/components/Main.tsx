@@ -1,6 +1,6 @@
 import React from 'react'
 import HeroSection from './shared/HeroSection'
-import Features from './shared/Featured'
+// import Features from './shared/Featured'
 import HowItWorks from './shared/HowItWorks'
 import PopularTemplates from './shared/PopularTemplates'
 import Pricing from './shared/Pricing'
@@ -10,7 +10,7 @@ const Main = () => {
     return (
         <div>
             <HeroSection />
-            <Features />
+            {/* <Features /> */}
             <HowItWorks />
             <PopularTemplates />
             <Pricing />

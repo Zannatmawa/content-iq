@@ -15,7 +15,6 @@ const Main = () => {
             <PopularTemplates />
             <Pricing />
             <Statistics />
-            {/* <NewsletterSignup /> */}
         </div>
     )
 }
